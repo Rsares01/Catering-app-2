@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './style.css';
 
@@ -20,6 +20,8 @@ const today = () => new Date().toLocaleDateString('sv-SE');
 function App(){
  const [answers,setAnswers] = useState({date:today(),employee:'',floatConfirmed:false,cashLeft:'0,00',sales:'0,00',card:'0,00',openInvoices:'0,00',payouts:'0,00',vouchers:'0,00',other:'0,00',receipts:'0,00'});
  const [step,setStep] = useState(0); const [done,setDone] = useState(false); const [kind,setKind] = useState(null); const [invoiceRows,setInvoiceRows] = useState([{company:'',costCenter:'',amount:'',showCostCenter:false}]); const [showCompanies,setShowCompanies] = useState(false); const [knownCompanies,setKnownCompanies] = useState(()=>{try{return JSON.parse(localStorage.getItem('restaurant-known-companies')||'[]')}catch{return []}});
+ useEffect(()=>{let active=true;fetch('/api/companies').then(r=>r.ok?r.json():Promise.reject()).then(data=>{if(!active)return;const merged=[...new Set([...knownCompanies,...(Array.isArray(data.companies)?data.companies:[])])].sort((a,b)=>a.localeCompare(b,'de'));setKnownCompanies(merged);try{localStorage.setItem('restaurant-known-companies',JSON.stringify(merged))}catch{}}).catch(()=>{});return()=>{active=false}},[]);
+ useEffect(()=>{if(!knownCompanies.length)return;fetch('/api/companies',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({companies:knownCompanies})}).then(r=>r.ok?r.json():null).then(data=>{if(data&&Array.isArray(data.companies)){const merged=[...new Set([...knownCompanies,...data.companies])].sort((a,b)=>a.localeCompare(b,'de'));if(merged.length!==knownCompanies.length)setKnownCompanies(merged);}}).catch(()=>{})},[knownCompanies]);
  const set = (k,v)=>setAnswers(a=>({...a,[k]:v}));
  const setInvoice = (i,k,v)=>{setInvoiceRows(rows=>rows.map((row,index)=>index===i?({...row,[k]:v}):row)); if(k==='company'&&v.trim()&&!knownCompanies.some(name=>name.toLocaleLowerCase('de-DE')===v.trim().toLocaleLowerCase('de-DE'))){const next=[...knownCompanies,v.trim()].sort((a,b)=>a.localeCompare(b,'de'));setKnownCompanies(next);try{localStorage.setItem('restaurant-known-companies',JSON.stringify(next))}catch{}}};
  const rememberCompany = name=>{const clean=name.trim();if(!clean)return;const next=knownCompanies.some(n=>n.toLocaleLowerCase('de-DE')===clean.toLocaleLowerCase('de-DE'))?knownCompanies:[...knownCompanies,clean].sort((a,b)=>a.localeCompare(b,'de'));setKnownCompanies(next);try{localStorage.setItem('restaurant-known-companies',JSON.stringify(next))}catch{}};
