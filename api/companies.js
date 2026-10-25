@@ -17,10 +17,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return res.status(503).json({ error: "Cloud-Speicher der Abrechnungs-App ist noch nicht korrekt verbunden." });
-  }
-
   try {
     const companies = await readCompanies();
 
