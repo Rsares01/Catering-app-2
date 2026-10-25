@@ -1,29 +1,28 @@
-import { list, put } from "@vercel/blob";
+import { get, put } from "@vercel/blob";
 
 const BLOB_PATH = "restaurant-abrechnung/companies.json";
 
+async function readCompanies() {
+  const blob = await get(BLOB_PATH, { access: "private" });
+  if (!blob || blob.statusCode !== 200) return [];
+  const text = await new Response(blob.stream).text();
+  const data = JSON.parse(text);
+  return Array.isArray(data.companies) ? data.companies : [];
+}
+
 export default async function handler(req, res) {
+  res.setHeader("Cache-Control", "private, no-store");
   if (req.method !== "GET" && req.method !== "POST") {
     res.setHeader("Allow", "GET, POST");
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return res.status(503).json({ error: "Cloud-Speicher der Abrechnungs-App ist nicht eingerichtet." });
+    return res.status(503).json({ error: "Cloud-Speicher der Abrechnungs-App ist noch nicht korrekt verbunden." });
   }
 
   try {
-    const blobs = await list({ prefix: BLOB_PATH, limit: 10 });
-    const blob = blobs.blobs.find((item) => item.pathname === BLOB_PATH);
-    let companies = [];
-
-    if (blob) {
-      const response = await fetch(blob.url, { cache: "no-store" });
-      if (response.ok) {
-        const data = await response.json();
-        companies = Array.isArray(data.companies) ? data.companies : [];
-      }
-    }
+    const companies = await readCompanies();
 
     if (req.method === "GET") {
       return res.status(200).json({ companies });
@@ -35,15 +34,18 @@ export default async function handler(req, res) {
       .filter(Boolean))].sort((a, b) => a.localeCompare(b, "de"));
 
     await put(BLOB_PATH, JSON.stringify({ companies: normalized, updatedAt: new Date().toISOString() }), {
-      access: "public",
+      access: "private",
       addRandomSuffix: false,
       allowOverwrite: true,
       contentType: "application/json",
-      cacheControlMaxAge: 0
+      cacheControlMaxAge: 0,
     });
 
     return res.status(200).json({ companies: normalized });
   } catch (error) {
+    if (error?.statusCode === 404 || error?.code === "BLOB_NOT_FOUND") {
+      if (req.method === "GET") return res.status(200).json({ companies: [] });
+    }
     console.error("Company cloud sync failed", error);
     return res.status(500).json({ error: "Firmenliste konnte nicht synchronisiert werden." });
   }
