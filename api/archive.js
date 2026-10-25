@@ -2,12 +2,6 @@ import { get, put } from "@vercel/blob";
 
 const BLOB_PATH = "restaurant-abrechnung/archive.json";
 
-function authorized(req) {
-  const expected = process.env.ARCHIVE_PASSWORD;
-  const supplied = req.headers["x-archive-password"];
-  return Boolean(expected && supplied && supplied === expected);
-}
-
 async function readArchive() {
   try {
     const blob = await get(BLOB_PATH, { access: "private" });
@@ -26,7 +20,6 @@ export default async function handler(req, res) {
     res.setHeader("Allow", "GET, POST");
     return res.status(405).json({ error: "Method not allowed" });
   }
-  if (!authorized(req)) return res.status(401).json({ error: "Passwort falsch oder Archivpasswort noch nicht eingerichtet." });
   try {
     const records = await readArchive();
     if (req.method === "GET") {
