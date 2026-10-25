@@ -41,9 +41,54 @@ function App(){
  const saveArchiveRecord = async () => { if(archiveSaved||archiveSaving)return;setArchiveSaving(true);setArchiveError('');try{const pdfBase64=makePdfBase64();const r=await fetch('/api/archive',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:answers.date,kind:kind==='rotary'?'Montags Rotary':'Abendkasse',employee:answers.employee||'',amount:euro(result),pdfBase64})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Speichern fehlgeschlagen.');setArchiveNumber(d.record.number);setArchiveSaved(true);}catch(e){setArchiveError(e.message||'Speichern fehlgeschlagen.');}finally{setArchiveSaving(false);} };
  const downloadArchivedPdf = item => {const a=document.createElement('a');a.href='data:application/pdf;base64,'+item.pdfBase64;a.download=item.filename||('Abrechnung-'+item.number+'.pdf');a.click();};
 
- const pdf = async()=>{
-  const text = `ABENDKASSE – TAGESABRECHNUNG\nRestaurant · Kassenabschluss und Trinkgeldermittlung\n\nDatum: ${answers.date}\nMitarbeiter/in: ${answers.employee||'—'}\n\nKellnerportemonnaie: 120,00 € zuerst beiseitegelegt: Ja\n\nUmsatz und Abzüge\nTagesumsatz laut Kasse: ${euro(amount('sales'))}\nÜbriges Bargeld / Barzahlungen: ${euro(amount('cashLeft'))}\nEC-/Kartenzahlungen: ${euro(amount('card'))}\nOffene Firmenrechnungen:\n${invoiceRows.filter(row=>row.company.trim()||row.amount.trim()).map(row=>'- '+(row.company.trim()||'Firma nicht angegeben')+(row.costCenter.trim()?' | Kostenstelle: '+row.costCenter.trim():'')+': '+euro(Number(String(row.amount||0).replace(/\s/g,'').replace(/\./g,'').replace(',','.'))||0)).join('\n')||'- Keine'}\nSumme offene Firmenrechnungen: ${euro(invoiceTotal)}\nAushilfen / Auszahlungen: ${euro(amount('payouts'))}\nNur eingelöste Gutscheine: ${euro(amount('vouchers'))}\nSonstige Beträge: ${euro(amount('other'))}\nQuittungen: ${euro(amount('receipts'))}\n\nTrinkgeld / Differenz: ${euro(result)}\nAuszahlbares Trinkgeld: ${euro(Math.max(0,result))}\n\nRechenweg: Bargeld + EC/Kartenzahlungen + offene Rechnungen + Auszahlungen + eingelöste Gutscheine + sonstige Beträge + Quittungen minus Tagesumsatz.\nDie 120,00 € im Kellnerportemonnaie werden nicht noch einmal abgezogen.`;
-  const blob = new Blob([text],{type:'text/plain;charset=utf-8'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=(kind==='rotary'?'Montags_Rotary_':'Abendkasse_')+answers.date+'.txt'; a.click(); URL.revokeObjectURL(url);
+ const pdf = () => {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const lines = [
+   'GO RESTAURANT – ABRECHNUNG',
+   'Art: '+(kind==='rotary'?'Montags Rotary':'Abendkasse'),
+   'Datum: '+answers.date,
+   'Mitarbeiter/in: '+(answers.employee||'—'),
+   '',
+   'KELLNERPORTEMONNAIE',
+   '120,00 € wurden zuerst beiseitegelegt: '+(answers.floatConfirmed?'Ja':'Nicht bestätigt'),
+   '',
+   'UMSATZ UND ABZÜGE',
+   'Tagesumsatz laut Kasse: '+euro(amount('sales')),
+   'Übriges Bargeld / Barzahlungen: '+euro(amount('cashLeft')),
+   'EC-/Kartenzahlungen: '+euro(amount('card')),
+   'Offene Firmenrechnungen:'
+  ];
+  invoiceRows.filter(row=>row.company.trim()||row.amount.trim()).forEach(row=>{
+   const parsed = Number(String(row.amount||0).replace(/\\s/g,'').replace(/\\./g,'').replace(',','.'))||0;
+   lines.push('- '+(row.company.trim()||'Firma nicht angegeben')+(row.costCenter.trim()?' | Kostenstelle: '+row.costCenter.trim():'')+': '+euro(parsed));
+  });
+  if(!invoiceRows.some(row=>row.company.trim()||row.amount.trim())) lines.push('- Keine');
+  lines.push(
+   'Summe offene Firmenrechnungen: '+euro(invoiceTotal),
+   'Aushilfen / Auszahlungen: '+euro(amount('payouts')),
+   'Eingelöste Gutscheine: '+euro(amount('vouchers')),
+   'Sonstige Beträge: '+euro(amount('other')),
+   'Quittungen: '+euro(amount('receipts')),
+   '',
+   'ERGEBNIS',
+   'Trinkgeld / Differenz: '+euro(result),
+   'Auszahlbares Trinkgeld: '+euro(Math.max(0,result)),
+   '',
+   'Rechenweg: Bargeld + EC/Kartenzahlungen + offene Rechnungen + Auszahlungen + eingelöste Gutscheine + sonstige Beträge + Quittungen minus Tagesumsatz.',
+   'Die 120,00 € im Kellnerportemonnaie werden nicht noch einmal abgezogen.'
+  );
+  let y = 18;
+  for (const line of lines) {
+   const wrapped = doc.splitTextToSize(line, 180);
+   const needed = Math.max(6, wrapped.length * 6);
+   if (y + needed > 280) { doc.addPage(); y = 18; }
+   doc.setFont('helvetica', line.startsWith('GO RESTAURANT') || line==='UMSATZ UND ABZÜGE' || line==='ERGEBNIS' ? 'bold' : 'normal');
+   doc.setFontSize(line.startsWith('GO RESTAURANT') ? 14 : 10);
+   doc.text(wrapped, 15, y);
+   y += needed;
+  }
+  const filename = (kind==='rotary'?'Montags_Rotary_':'Abendkasse_')+answers.date+'.pdf';
+  doc.save(filename);
  };
  const current = steps[step];
  if (archiveOpen) return <main><header><button className="back-home secondary" onClick={()=>setArchiveOpen(false)}>Zurück zur Auswahl</button><h1>Abrechnungsarchiv</h1><p className="muted">Gespeicherte Monats-PDFs</p></header><section className="panel">{archiveItems.length===0?<p>Noch keine Abrechnungen gespeichert.</p>:Object.entries(archiveItems.reduce((g,x)=>{(g[x.month||'Ohne Datum']??=[]).push(x);return g;},{})).sort(([a],[b])=>b.localeCompare(a)).map(([m,items])=><div className="invoice-row" key={m}><h3>{m}</h3>{items.map(x=><div className="known-company" key={x.number}><span><b>{x.number}</b> · {x.date} · {x.kind} · {x.amount}</span><button className="small secondary" onClick={()=>downloadArchivedPdf(x)}>PDF öffnen</button></div>)}</div>)}{archiveError&&<p className="help">{archiveError}</p>}</section></main>;
