@@ -9,7 +9,7 @@ const steps = [
   { key:'cashLeft', title:'Wie viel Bargeld ist danach übrig?', help:'Zähle nur das übrige Bargeld, nachdem die 120,00 € im Kellnerportemonnaie liegen.', type:'money' },
   { key:'sales', title:'Wie hoch ist der Tagesumsatz laut Kasse?', type:'money' },
   { key:'card', title:'Wie hoch sind die EC-/Kartenzahlungen?', type:'money' },
-  { key:'openInvoices', title:'Wie viel wurde heute auf Rechnung gekauft?', help:'Trage hier den Gesamtbetrag ein, den Gäste oder Firmen heute nicht direkt bezahlt haben und für den wir ihnen später eine Rechnung zuschicken – zum Beispiel an Weiland. Bereits bezahlte Beträge bitte nicht eintragen.', type:'money', extra:true },
+  { key:'openInvoices', title:'Wie viel wurde heute auf Rechnung gekauft?', help:'Trage hier den Gesamtbetrag ein, den Gäste oder Firmen heute nicht direkt bezahlt haben und für den wir ihnen später eine Rechnung zuschicken – zum Beispiel an Vaillant. Bereits bezahlte Beträge bitte nicht eintragen.', type:'money', extra:true },
   { key:'payouts', title:'Wie viel wurde an Aushilfen ausgezahlt?', help:'Summe aller Aushilfen und sonstigen Auszahlungen.', type:'money' },
   { key:'vouchers', title:'Wie hoch ist der Wert der eingelösten Gutscheine?', help:'Nur eingelöste Gutscheine eintragen. Gutscheine mit Geldwert, die nicht eingelöst wurden, einfach zur Abrechnung dazulegen – nicht eintragen und nicht berechnen.', type:'money' },
   { key:'other', title:'Wie hoch sind die sonstigen Abzüge?', help:'Wenn keine sonstigen Abzüge vorliegen, 0,00 € eingeben.', type:'money' },
