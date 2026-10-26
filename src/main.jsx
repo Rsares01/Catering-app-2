@@ -10,7 +10,7 @@ const steps = [
   { key:'cashLeft', title:'Wie viel Bargeld ist danach übrig?', help:'Zähle nur das übrige Bargeld, nachdem die 120,00 € im Kellnerportemonnaie liegen.', type:'money' },
   { key:'items', title:'Welche Speisen und Getränke wurden verkauft?', help:'Gib die Stückzahlen ein. Der Tagesumsatz wird automatisch aus den Artikelpreisen berechnet.', type:'items' },
   { key:'card', title:'Wie hoch sind die EC-/Kartenzahlungen?', type:'money' },
-  { key:'clubkasse', title:'Clubkasse Rotary – Schramm', help:'Diese Rechnung wird separat dokumentiert und nicht in die Trinkgeldberechnung eingerechnet.', type:'clubkasse' },
+  { key:'clubkasse', title:'Clubkasse Rotary', help:'Diese Rechnung wird separat dokumentiert und nicht in die Trinkgeldberechnung eingerechnet.', type:'clubkasse' },
   { key:'payouts', title:'Wie viel wurde an Aushilfen ausgezahlt?', help:'Summe aller Aushilfen und sonstigen Auszahlungen.', type:'money' },
   { key:'vouchers', title:'Wie hoch ist der Wert der heute eingelösten Gutscheine?', help:'Trage hier ausschließlich Gutscheine ein, die heute tatsächlich eingelöst wurden. Wenn ein eingelöster Gutschein mit EC bezahlt worden war: Den EC-Beleg aus dem Gutschein nehmen, den gleichen Geldbetrag in den Gutschein hineinlegen und den Gutschein separat aufbewahren. Den Gutschein nicht ein zweites Mal abrechnen. Nicht eingelöste Gutscheine gehören nicht in dieses Feld.', type:'money' },
   { key:'receipts', title:'Wie hoch ist die Summe der Quittungen?', help:'Wenn keine Quittungen vorliegen, 0,00 € eingeben.', type:'money' },
@@ -26,7 +26,7 @@ function App(){
  const moneyLabel = {cashLeft:'Übriges Bargeld',sales:'Tagesumsatz laut Kasse',card:'EC-/Kartenzahlungen',payouts:'Aushilfen / Auszahlungen',vouchers:'Eingelöste Gutscheine',other:'Sonstige Beträge',receipts:'Quittungen'};
  const makePdfBase64 = () => {
   const doc = new jsPDF();
-  const lines = ['GO RESTAURANT – ABRECHNUNG','Art: '+(kind==='rotary'?'Montags Rotary':'Abendkasse'),'Datum: '+answers.date,'Mitarbeiter/in: '+(answers.employee||'—'),'','Tagesumsatz aus Artikeln: '+euro(itemSalesTotal),'Übriges Bargeld: '+euro(amount('cashLeft')),'EC-/Kartenzahlungen: '+euro(amount('card')),'Clubkasse Rotary – Schramm (separat, nicht verrechnet): '+euro(Number(String(clubkasseAmount||0).replace(/\s/g,'').replace(/\./g,'').replace(',','.'))||0)];
+  const lines = ['GO RESTAURANT – ABRECHNUNG','Art: '+(kind==='rotary'?'Montags Rotary':'Abendkasse'),'Datum: '+answers.date,'Mitarbeiter/in: '+(answers.employee||'—'),'','Tagesumsatz aus Artikeln: '+euro(itemSalesTotal),'Übriges Bargeld: '+euro(amount('cashLeft')),'EC-/Kartenzahlungen: '+euro(amount('card')),'Clubkasse Rotary (separat, nicht verrechnet): '+euro(Number(String(clubkasseAmount||0).replace(/\s/g,'').replace(/\./g,'').replace(',','.'))||0)];
   lines.push('Aushilfen / Auszahlungen: '+euro(amount('payouts')),'Eingelöste Gutscheine: '+euro(amount('vouchers')),'Quittungen: '+euro(amount('receipts')),'','Trinkgeld / Differenz: '+euro(result),'Auszahlbares Trinkgeld: '+euro(Math.max(0,result)));
   let y=18; lines.forEach(line=>{const wrapped=doc.splitTextToSize(line,180);if(y+wrapped.length*7>280){doc.addPage();y=18;}doc.text(wrapped,15,y);y+=wrapped.length*7;});
   return doc.output('datauristring').split(',')[1];
@@ -50,7 +50,7 @@ function App(){
    'Tagesumsatz aus Artikeln: '+euro(itemSalesTotal),
    'Übriges Bargeld / Barzahlungen: '+euro(amount('cashLeft')),
    'EC-/Kartenzahlungen: '+euro(amount('card')),
-   'Clubkasse Rotary – Schramm (separat, nicht verrechnet): '+euro(Number(String(clubkasseAmount||0).replace(/\s/g,'').replace(/\./g,'').replace(',','.'))||0)
+   'Clubkasse Rotary (separat, nicht verrechnet): '+euro(Number(String(clubkasseAmount||0).replace(/\s/g,'').replace(/\./g,'').replace(',','.'))||0)
   ];
   lines.push(
    'Aushilfen / Auszahlungen: '+euro(amount('payouts')),
@@ -62,7 +62,7 @@ function App(){
    'Trinkgeld / Differenz: '+euro(result),
    'Auszahlbares Trinkgeld: '+euro(Math.max(0,result)),
    '',
-   'Rechenweg: Bargeld + EC/Kartenzahlungen + Auszahlungen + eingelöste Gutscheine + sonstige Beträge + Quittungen minus Artikelumsatz. Clubkasse Rotary – Schramm wird separat dokumentiert und nicht verrechnet.',
+   'Rechenweg: Bargeld + EC/Kartenzahlungen + Auszahlungen + eingelöste Gutscheine + sonstige Beträge + Quittungen minus Artikelumsatz. Clubkasse Rotary wird separat dokumentiert und nicht verrechnet.',
    'Die 120,00 € im Kellnerportemonnaie werden nicht noch einmal abgezogen.'
   );
   let y = 18;
@@ -89,7 +89,7 @@ function App(){
  {current.type==='confirm'&&<label className="check"><input type="checkbox" checked={answers.floatConfirmed} onChange={e=>set('floatConfirmed',e.target.checked)}/>120,00 € liegen im Kellnerportemonnaie</label>}
  {current.type==='money'&&<label>Betrag in Euro<input inputMode="decimal" value={answers[current.key]} onChange={e=>set(current.key,e.target.value)} placeholder="0,00"/></label>}
  {current.type==='items'&&<div className="invoice-list">{menuItems.map((item,i)=><div className="invoice-row" key={item.name}><label>{item.name} · {euro(item.price)}<input type="number" min="0" step="1" inputMode="numeric" value={itemQty[i]} onChange={e=>setItemQty(q=>q.map((n,index)=>index===i?Math.max(0,Number(e.target.value)||0):n))} placeholder="Menge"/></label><p>Zwischensumme: <strong>{euro(item.price*(Number(itemQty[i])||0))}</strong></p></div>)}<p className="invoice-total">Artikelumsatz gesamt: <strong>{euro(itemSalesTotal)}</strong></p></div>}
- {current.type==='clubkasse'&&<div className="invoice-list"><label>Name<input value="Schramm" readOnly/></label><label>Clubkasse Rotary – Betrag in Euro<input inputMode="decimal" value={clubkasseAmount} onChange={e=>setClubkasseAmount(e.target.value)} placeholder="0,00"/></label><p className="help">Wird separat gespeichert und nicht gegengerechnet.</p></div>}
+ {current.type==='clubkasse'&&<div className="invoice-list"><label>Name<input value="Rotary" readOnly/></label><label>Clubkasse Rotary – Betrag in Euro<input inputMode="decimal" value={clubkasseAmount} onChange={e=>setClubkasseAmount(e.target.value)} placeholder="0,00"/></label><p className="help">Wird separat gespeichert und nicht gegengerechnet.</p></div>}
  <nav><button className="secondary" onClick={()=>step===0?location.reload():setStep(s=>s-1)}>Zurück</button><button onClick={()=>{if(current.type==='confirm'&&!answers.floatConfirmed){alert('Bitte bestätige zuerst, dass die 120,00 € im Kellnerportemonnaie liegen.');return;} if(step===steps.length-1){setDone(true);saveArchiveRecord()}else setStep(s=>s+1)}}>Weiter</button></nav>
  <p className="privacy">Die Abrechnung wird beim Abschluss automatisch als PDF im Archiv gespeichert.</p></section>
  : <section className="panel"><h2>Abrechnung fertig</h2><p className="help">{archiveSaved?("Gespeichert als "+archiveNumber+".pdf"):archiveSaving?"PDF wird gespeichert …":"Abrechnung als PDF im Archiv speichern."}</p>{archiveError&&<p className="help">{archiveError}</p>}{!archiveSaved&&<button className="wide" disabled={archiveSaving} onClick={saveArchiveRecord}>{archiveSaving?"Wird gespeichert …":"Abrechnung abschließen und archivieren"}</button>}<div className="result"><b>Ergebnis der Abrechnung</b><p>Trinkgeld / Differenz: <strong>{euro(result)}</strong></p><p>Auszahlbares Trinkgeld: <strong>{euro(Math.max(0,result))}</strong></p><button className="wide" onClick={pdf}>Abrechnung als Datei herunterladen</button><button className="wide secondary" onClick={()=>{if(navigator.share)navigator.share({title:'Abendkasse',text:'Abendkasse '+answers.date+' – '+euro(result)}).catch(()=>{});else alert('Bitte zuerst die Abrechnung als Datei herunterladen und anschließend über WhatsApp teilen.')}}>Abschicken / Teilen</button></div><nav><button className="secondary" onClick={()=>{setDone(false);setStep(0)}}>Neue Abrechnung</button><button onClick={()=>{setDone(false);setStep(steps.length-1)}}>Zurück zu den Angaben</button></nav><p className="privacy">Die Abrechnung wurde automatisch archiviert.</p></section>}
