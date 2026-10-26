@@ -50,7 +50,7 @@ function App(){
    'Tagesumsatz aus Artikeln: '+euro(itemSalesTotal),
    'Übriges Bargeld / Barzahlungen: '+euro(amount('cashLeft')),
    'EC-/Kartenzahlungen: '+euro(amount('card')),
-   'Offene Firmenrechnungen:'
+   'Clubkasse Rotary – Schramm (separat, nicht verrechnet): '+euro(Number(String(clubkasseAmount||0).replace(/\s/g,'').replace(/\./g,'').replace(',','.'))||0)
   ];
   lines.push(
    'Aushilfen / Auszahlungen: '+euro(amount('payouts')),
