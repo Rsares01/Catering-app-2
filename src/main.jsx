@@ -33,7 +33,7 @@ function App(){
   const doc = new jsPDF();
   const lines = ['GO RESTAURANT – ABRECHNUNG','Art: '+(kind==='rotary'?'Montags Rotary':'Abendkasse'),'Datum: '+answers.date,'Mitarbeiter/in: '+(answers.employee||'—')]; if(kind==='rotary') lines.push('','Clubkasse Rotary gesamt: '+euro(rotaryItemsTotal)); else lines.push('','Tagesumsatz laut Kasse: '+euro(amount('sales')),'Übriges Bargeld: '+euro(amount('cashLeft')),'EC-/Kartenzahlungen: '+euro(amount('card')),'Offene Firmenrechnungen:');
   invoiceRows.filter(row=>row.company.trim()||row.amount.trim()).forEach(row=>lines.push('- '+row.company+': '+euro(Number(String(row.amount||0).replace(/\s/g,'').replace(/\./g,'').replace(',','.'))||0)));
-  lines.push('Offene Firmenrechnungen (nur dokumentiert, nicht verrechnet): '+euro(invoiceTotal),'Aushilfen / Auszahlungen: '+euro(payoutTotal),'Eingelöste Gutscheine: '+euro(amount('vouchers')),'Quittungen: '+euro(amount('receipts')),'','Trinkgeld / Differenz: '+euro(result),'Auszahlbares Trinkgeld: '+euro(Math.max(0,result)));
+  lines.push('Offene Firmenrechnungen (nur dokumentiert, nicht verrechnet): '+euro(invoiceTotal)); payoutRows.filter(row=>row.name.trim()||row.amount.trim()).forEach(row=>lines.push('Auszahlung – '+(row.name.trim()||'Name nicht angegeben')+': '+euro(Number(String(row.amount||0).replace(/\s/g,'').replace(/\./g,'').replace(',','.'))||0))); lines.push('Summe aller Auszahlungen: '+euro(payoutTotal),'Eingelöste Gutscheine: '+euro(amount('vouchers')),'Quittungen: '+euro(amount('receipts')),'','Trinkgeld / Differenz: '+euro(result),'Auszahlbares Trinkgeld: '+euro(Math.max(0,result)));
   let y=18; lines.forEach(line=>{const wrapped=doc.splitTextToSize(line,180);if(y+wrapped.length*7>280){doc.addPage();y=18;}doc.text(wrapped,15,y);y+=wrapped.length*7;});
   return doc.output('datauristring').split(',')[1];
  };
@@ -63,6 +63,7 @@ function App(){
    lines.push('- '+(row.company.trim()||'Firma nicht angegeben')+(row.costCenter.trim()?' | Kostenstelle: '+row.costCenter.trim():'')+': '+euro(parsed));
   });
   if(!invoiceRows.some(row=>row.company.trim()||row.amount.trim())) lines.push('- Keine');
+  payoutRows.filter(row=>row.name.trim()||row.amount.trim()).forEach(row=>lines.push('Auszahlung – '+(row.name.trim()||'Name nicht angegeben')+': '+euro(Number(String(row.amount||0).replace(/\s/g,'').replace(/\./g,'').replace(',','.'))||0)));
   lines.push(
    'Summe offene Firmenrechnungen: '+euro(invoiceTotal),
    'Aushilfen / Auszahlungen: '+euro(payoutTotal),
