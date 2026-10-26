@@ -8,7 +8,7 @@ const steps = [
   { key:'employee', title:'Wer macht die Abendabrechnung?', help:'Optional – Name der Mitarbeiterin oder des Mitarbeiters.', type:'text', label:'Name (optional)', placeholder:'Mitarbeiter/in' },
   { key:'floatConfirmed', title:'Sind zuerst 120,00 € ins Kellnerportemonnaie gelegt?', help:'Lege zuerst genau 120,00 € beiseite. Dieser Betrag wird nicht noch einmal abgezogen.', type:'confirm' },
   { key:'cashLeft', title:'Wie viel Bargeld ist danach übrig?', help:'Zähle nur das übrige Bargeld, nachdem die 120,00 € im Kellnerportemonnaie liegen.', type:'money' },
-  { key:'items', title:'Welche Speisen und Getränke wurden verkauft?', help:'Gib die Stückzahlen ein. Der Tagesumsatz wird automatisch aus den Artikelpreisen berechnet.', type:'items' },
+  { key:'sales', title:'Wie hoch ist der Tagesumsatz laut Kasse?', help:'Trage den Tagesumsatz ein, der auf der Kasse steht.', type:'money' },
   { key:'card', title:'Wie hoch sind die EC-/Kartenzahlungen?', type:'money' },
   { key:'openInvoices', title:'Welche Rechnungen sind heute offen geblieben?', help:'Trage jede Rechnung einzeln ein: Name der Firma und Betrag der Rechnung. Gemeint sind Gäste oder Firmen, die heute nicht direkt bezahlt haben und denen wir die Rechnung später zuschicken – zum Beispiel Vaillant.', type:'invoices', extra:true },
   { key:'payouts', title:'Wie viel wurde an Aushilfen ausgezahlt?', help:'Summe aller Aushilfen und sonstigen Auszahlungen.', type:'money' },
@@ -27,11 +27,11 @@ function App(){
  const rememberCompany = name=>{const clean=name.trim();if(!clean)return;const next=knownCompanies.some(n=>n.toLocaleLowerCase('de-DE')===clean.toLocaleLowerCase('de-DE'))?knownCompanies:[...knownCompanies,clean].sort((a,b)=>a.localeCompare(b,'de'));setKnownCompanies(next);try{localStorage.setItem('restaurant-known-companies',JSON.stringify(next))}catch{}};
  const invoiceTotal = invoiceRows.reduce((sum,row)=>sum+(Number(String(row.amount||0).replace(/\s/g,'').replace(/\./g,'').replace(',','.'))||0),0);
  const amount = k => Number(String(answers[k]??0).replace(/\s/g,'').replace(/\./g,'').replace(',','.'))||0;
- const result = useMemo(()=>amount('cashLeft')+amount('card')+amount('payouts')+amount('vouchers')+amount('other')+amount('receipts')-itemSalesTotal,[answers,itemSalesTotal]);
+ const result = useMemo(()=>amount('cashLeft')+amount('card')+amount('payouts')+amount('vouchers')+amount('other')+amount('receipts')-amount('sales'),[answers]);
  const moneyLabel = {cashLeft:'Übriges Bargeld',sales:'Tagesumsatz laut Kasse',card:'EC-/Kartenzahlungen',openInvoices:'Nicht bezahlte Rechnungen',payouts:'Aushilfen / Auszahlungen',vouchers:'Eingelöste Gutscheine',other:'Sonstige Beträge',receipts:'Quittungen'};
  const makePdfBase64 = () => {
   const doc = new jsPDF();
-  const lines = ['GO RESTAURANT – ABRECHNUNG','Art: '+(kind==='rotary'?'Montags Rotary':'Abendkasse'),'Datum: '+answers.date,'Mitarbeiter/in: '+(answers.employee||'—'),'','Tagesumsatz aus Artikeln: '+euro(itemSalesTotal),'Übriges Bargeld: '+euro(amount('cashLeft')),'EC-/Kartenzahlungen: '+euro(amount('card')),'Offene Firmenrechnungen:'];
+  const lines = ['GO RESTAURANT – ABRECHNUNG','Art: '+(kind==='rotary'?'Montags Rotary':'Abendkasse'),'Datum: '+answers.date,'Mitarbeiter/in: '+(answers.employee||'—')]; if(kind==='rotary') lines.push('','Clubkasse Rotary gesamt: '+euro(rotaryItemsTotal)); else lines.push('','Tagesumsatz laut Kasse: '+euro(amount('sales')),'Übriges Bargeld: '+euro(amount('cashLeft')),'EC-/Kartenzahlungen: '+euro(amount('card')),'Offene Firmenrechnungen:');
   invoiceRows.filter(row=>row.company.trim()||row.amount.trim()).forEach(row=>lines.push('- '+row.company+': '+euro(Number(String(row.amount||0).replace(/\s/g,'').replace(/\./g,'').replace(',','.'))||0)));
   lines.push('Offene Firmenrechnungen (nur dokumentiert, nicht verrechnet): '+euro(invoiceTotal),'Aushilfen / Auszahlungen: '+euro(amount('payouts')),'Eingelöste Gutscheine: '+euro(amount('vouchers')),'Quittungen: '+euro(amount('receipts')),'','Trinkgeld / Differenz: '+euro(result),'Auszahlbares Trinkgeld: '+euro(Math.max(0,result)));
   let y=18; lines.forEach(line=>{const wrapped=doc.splitTextToSize(line,180);if(y+wrapped.length*7>280){doc.addPage();y=18;}doc.text(wrapped,15,y);y+=wrapped.length*7;});
@@ -53,7 +53,7 @@ function App(){
    '120,00 € wurden zuerst beiseitegelegt: '+(answers.floatConfirmed?'Ja':'Nicht bestätigt'),
    '',
    'UMSATZ UND ABZÜGE',
-   'Tagesumsatz aus Artikeln: '+euro(itemSalesTotal),
+   'Tagesumsatz laut Kasse: '+euro(amount('sales')),
    'Übriges Bargeld / Barzahlungen: '+euro(amount('cashLeft')),
    'EC-/Kartenzahlungen: '+euro(amount('card')),
    'Offene Firmenrechnungen:'
@@ -90,7 +90,7 @@ function App(){
   const filename = (kind==='rotary'?'Montags_Rotary_':'Abendkasse_')+answers.date+'.pdf';
   doc.save(filename);
  };
- const rotarySteps=[...steps.filter(x=>x.key!=='sales'&&x.key!=='openInvoices'&&x.key!=='vouchers'),{key:'rotaryItems',title:'Speisen und Getränke – Clubkasse Rotary',help:'Mengen eintragen. Diese Abrechnung wird separat geführt.',type:'rotaryItems'}]; const activeSteps=kind==='rotary'?rotarySteps:steps; const current=activeSteps[step];
+ const rotarySteps=[...steps.filter(x=>x.key!=='sales'&&x.key!=='openInvoices'&&x.key!=='vouchers'&&x.key!=='cashLeft'&&x.key!=='card'&&x.key!=='payouts'&&x.key!=='receipts'&&x.key!=='other'),{key:'rotaryItems',title:'Speisen und Getränke – Clubkasse Rotary',help:'Mengen eintragen. Diese Abrechnung wird separat geführt.',type:'rotaryItems'}]; const activeSteps=kind==='rotary'?rotarySteps:steps; const current=activeSteps[step];
  if (archiveOpen) return <main><header><button className="back-home secondary" onClick={()=>setArchiveOpen(false)}>Zurück zur Auswahl</button><h1>Abrechnungsarchiv</h1><p className="muted">Gespeicherte Monats-PDFs</p></header><section className="panel">{archiveItems.length===0?<p>Noch keine Abrechnungen gespeichert.</p>:Object.entries(archiveItems.reduce((g,x)=>{(g[x.month||'Ohne Datum']??=[]).push(x);return g;},{})).sort(([a],[b])=>b.localeCompare(a)).map(([m,items])=><div className="invoice-row" key={m}><h3>{m}</h3>{items.map(x=><div className="known-company" key={x.number}><span><b>{x.number}</b> · {x.date} · {x.kind} · {x.amount}</span><button className="small secondary" onClick={()=>downloadArchivedPdf(x)}>PDF öffnen</button></div>)}</div>)}{archiveError&&<p className="help">{archiveError}</p>}</section></main>;
 
  if (!kind) return <main><header><span className="logo">GO</span><span className="eyebrow">RESTAURANT</span><h1>Abrechnung auswählen</h1><p className="muted">Wähle aus, welche Abrechnung du durchführen möchtest.</p></header><section className="panel picker"><button className="choice" onClick={()=>{setKind('evening');setStep(0);setDone(false)}}><strong>Abendkasse</strong><span>Normale Tages- und Kassenabrechnung</span></button><button className="choice rotary" onClick={()=>{setKind('rotary');setStep(0);setDone(false)}}><strong>Montags Rotary</strong><span>Separate Abrechnung für Montags Rotary</span></button><button className="choice" onClick={()=>{setArchiveItems([]);setArchiveOpen(true);loadArchive()}}><strong>Abrechnungsarchiv</strong><span>Monats-PDFs aufrufen</span></button></section></main>;
