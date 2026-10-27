@@ -33,7 +33,8 @@ export default async function handler(req, res) {
     const sequence = records.filter(item => item.date?.slice(0, 7) === month).length + 1;
     const number = month.replace("-", "") + "-" + String(sequence).padStart(3, "0");
     const filename = (kind === "Montags Rotary" ? "Montags-Rotary-" : "Abendkasse-") + number + ".pdf";
-    const safeItems = Array.isArray(items) ? items.filter(item => item && typeof item.name === "string").map(item => ({ name: item.name.slice(0, 160), quantity: Math.max(0, Number(item.quantity) || 0), unitPrice: Math.max(0, Number(item.unitPrice) || 0), total: Math.max(0, Number(item.total) || 0) })) : [];\n    const record = { number, date, month, kind, employee: String(employee || ""), amount: String(amount || ""), amountResult: String(amountResult || ""), items: safeItems, filename, pdfBase64, createdAt: new Date().toISOString() };
+    const safeItems = Array.isArray(items) ? items.filter(item => item && typeof item.name === "string").map(item => ({ name: item.name.slice(0, 160), quantity: Math.max(0, Number(item.quantity) || 0), unitPrice: Math.max(0, Number(item.unitPrice) || 0), total: Math.max(0, Number(item.total) || 0) })) : [];
+    const record = { number, date, month, kind, employee: String(employee || ""), amount: String(amount || ""), amountResult: String(amountResult || ""), items: safeItems, filename, pdfBase64, createdAt: new Date().toISOString() };
     const updated = [...records, record];
     await put(BLOB_PATH, JSON.stringify({ records: updated, updatedAt: new Date().toISOString() }), {
       access: "private",
