@@ -49,6 +49,7 @@ function App(){
    'GO RESTAURANT – ABRECHNUNG',
    'Art: '+(kind==='rotary'?'Montags Rotary':'Abendkasse'),
    'Datum: '+answers.date,
+   'Abschlussnummer laut Z-Abschlag: '+(answers.abschlussnummer||'—'),
    'Mitarbeiter/in: '+(answers.employee||'—'),
    '',
    'KELLNERPORTEMONNAIE',
