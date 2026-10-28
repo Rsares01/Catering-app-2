@@ -36,7 +36,7 @@ export default async function handler(req, res) {
       });
       return res.status(200).json({ deleted: true, number });
     }
-    const { date, abschlussnummer, kind, employee, amount, amountResult, items, invoiceFoodItems, invoiceFoodTotal, pdfBase64 } = req.body || {};
+    const { date, abschlussnummer, kind, employee, amount, amountResult, items, invoiceFoodItems, invoiceFoodTotal, tableclothQuantity, tableclothTotal, pdfBase64 } = req.body || {};
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || "")) || !pdfBase64 || !["Abendkasse", "Montags Rotary"].includes(kind)) {
       return res.status(400).json({ error: "Unvollständige Abrechnungsdaten." });
     }
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
     const filename = (kind === "Montags Rotary" ? "Montags-Rotary-" : "Abendkasse-") + number + ".pdf";
     const safeItems = Array.isArray(items) ? items.filter(item => item && typeof item.name === "string").map(item => ({ name: item.name.slice(0, 160), quantity: Math.max(0, Number(item.quantity) || 0), unitPrice: Math.max(0, Number(item.unitPrice) || 0), total: Math.max(0, Number(item.total) || 0) })) : [];
     const safeInvoiceFoodItems = Array.isArray(invoiceFoodItems) ? invoiceFoodItems.filter(item => item && typeof item.name === "string").map(item => ({ name: item.name.slice(0, 160), quantity: Math.max(0, Number(item.quantity) || 0), unitPrice: Math.max(0, Number(item.unitPrice) || 0), total: Math.max(0, Number(item.total) || 0) })) : [];
-    const record = { number, date, abschlussnummer: String(abschlussnummer || "").slice(0, 100), month, kind, employee: String(employee || ""), amount: String(amount || ""), amountResult: String(amountResult || ""), items: safeItems, invoiceFoodItems: safeInvoiceFoodItems, invoiceFoodTotal: String(invoiceFoodTotal || ""), filename, pdfBase64, createdAt: new Date().toISOString() };
+    const record = { number, date, abschlussnummer: String(abschlussnummer || "").slice(0, 100), month, kind, employee: String(employee || ""), amount: String(amount || ""), amountResult: String(amountResult || ""), items: safeItems, invoiceFoodItems: safeInvoiceFoodItems, invoiceFoodTotal: String(invoiceFoodTotal || ""), tableclothQuantity: kind === "Montags Rotary" ? Math.max(0, Number(tableclothQuantity) || 0) : 0, tableclothTotal: kind === "Montags Rotary" ? Math.max(0, Number(tableclothTotal) || 0) : 0, filename, pdfBase64, createdAt: new Date().toISOString() };
     const updated = [...records, record];
     await put(BLOB_PATH, JSON.stringify({ records: updated, updatedAt: new Date().toISOString() }), {
       access: "private",
