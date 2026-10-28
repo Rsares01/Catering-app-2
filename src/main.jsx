@@ -41,7 +41,29 @@ function App(){
  };
  const loadArchive = async () => { setArchiveError(''); try { const r=await fetch('/api/archive'); const d=await r.json(); if(!r.ok)throw new Error(d.error||'Archivzugriff fehlgeschlagen.');setArchiveItems(d.records||[]); } catch(e){setArchiveError(e.message||'Archivzugriff fehlgeschlagen.');} };
  const saveArchiveRecord = async () => { if(archiveSaved||archiveSaving)return;setArchiveSaving(true);setArchiveError('');try{const pdfBase64=makePdfBase64();const r=await fetch('/api/archive',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:answers.date,abschlussnummer:answers.abschlussnummer||'',kind:kind==='rotary'?'Montags Rotary':'Abendkasse',employee:answers.employee||'',amount:euro(kind==='rotary'?rotaryItemsTotal:result),items:kind==='rotary'?rotaryLineItems:[],amountResult:euro(result),pdfBase64})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Speichern fehlgeschlagen.');setArchiveNumber(d.record.number);setArchiveSaved(true);}catch(e){setArchiveError(e.message||'Speichern fehlgeschlagen.');}finally{setArchiveSaving(false);} };
- const downloadArchivedPdf = item => {const a=document.createElement('a');a.href='data:application/pdf;base64,'+item.pdfBase64;a.download=item.filename||('Abrechnung-'+item.number+'.pdf');a.click();};
+ const downloadArchivedPdf = item => {
+  try {
+   if (!item?.pdfBase64) throw new Error('Für diesen Archiv-Eintrag ist keine PDF-Datei gespeichert.');
+   const binary = atob(item.pdfBase64.replace(/^data:application\/pdf;base64,/, '').replace(/\s/g, ''));
+   const bytes = new Uint8Array(binary.length);
+   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+   const blob = new Blob([bytes], { type: 'application/pdf' });
+   const url = URL.createObjectURL(blob);
+   const opened = window.open(url, '_blank', 'noopener,noreferrer');
+   if (!opened) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = item.filename || ('Abrechnung-' + item.number + '.pdf');
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+   }
+   window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (e) {
+   setArchiveError('PDF konnte nicht geöffnet werden. Bitte die Abrechnung erneut speichern oder herunterladen. ' + (e?.message || ''));
+  }
+ };
 
  const pdf = () => {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
