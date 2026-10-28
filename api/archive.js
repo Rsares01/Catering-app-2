@@ -16,8 +16,8 @@ async function readArchive() {
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "private, no-store");
-  if (!["GET", "POST"].includes(req.method)) {
-    res.setHeader("Allow", "GET, POST");
+  if (!["GET", "POST", "DELETE"].includes(req.method)) {
+    res.setHeader("Allow", "GET, POST, DELETE");
     return res.status(405).json({ error: "Method not allowed" });
   }
   try {
@@ -25,12 +25,23 @@ export default async function handler(req, res) {
     if (req.method === "GET") {
       return res.status(200).json({ records: records.map(({ pdfBase64, ...meta }) => ({ ...meta, pdfBase64 })) });
     }
+    if (req.method === "DELETE") {
+      const { number, createdAt } = req.body || {};
+      if (!number || !createdAt) return res.status(400).json({ error: "Archiv-Eintrag nicht eindeutig angegeben." });
+      const exists = records.some(item => item.number === number && item.createdAt === createdAt);
+      if (!exists) return res.status(404).json({ error: "Diese Abrechnung wurde nicht gefunden oder bereits gelöscht." });
+      const updated = records.filter(item => !(item.number === number && item.createdAt === createdAt));
+      await put(BLOB_PATH, JSON.stringify({ records: updated, updatedAt: new Date().toISOString() }), {
+        access: "private", addRandomSuffix: false, allowOverwrite: true, contentType: "application/json", cacheControlMaxAge: 0,
+      });
+      return res.status(200).json({ deleted: true, number });
+    }
     const { date, abschlussnummer, kind, employee, amount, amountResult, items, pdfBase64 } = req.body || {};
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || "")) || !pdfBase64 || !["Abendkasse", "Montags Rotary"].includes(kind)) {
       return res.status(400).json({ error: "Unvollständige Abrechnungsdaten." });
     }
     const month = date.slice(0, 7);
-    const sequence = records.filter(item => item.date?.slice(0, 7) === month).length + 1;
+    const sequence = records.filter(item => item.date?.slice(0, 7) === month).reduce((max, item) => Math.max(max, Number(String(item.number || "").split("-").at(-1)) || 0), 0) + 1;
     const number = month.replace("-", "") + "-" + String(sequence).padStart(3, "0");
     const filename = (kind === "Montags Rotary" ? "Montags-Rotary-" : "Abendkasse-") + number + ".pdf";
     const safeItems = Array.isArray(items) ? items.filter(item => item && typeof item.name === "string").map(item => ({ name: item.name.slice(0, 160), quantity: Math.max(0, Number(item.quantity) || 0), unitPrice: Math.max(0, Number(item.unitPrice) || 0), total: Math.max(0, Number(item.total) || 0) })) : [];
