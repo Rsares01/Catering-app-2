@@ -2,3 +2,5 @@
 .picker{display:grid;gap:18px}.choice{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:8px;width:100%;padding:24px;background:#194800;border:1px solid #a0c842;border-radius:18px}.choice strong{font-size:1.4rem}.choice span{font-size:1rem;font-weight:400;color:#e0e8d7;line-height:1.45}.choice.rotary{background:#17213c;border-color:#8a9bdb}.back-home{margin-bottom:22px;width:100%}
 
 .learn-button{width:100%;background:#24253a;border-color:#9294ff}.known-companies{border:1px solid #5e6270;border-radius:16px;padding:16px}.known-companies h2{font-size:1.25rem}.known-company{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #353842}.known-company span{flex:1;overflow-wrap:anywhere}.small{min-height:38px;padding:8px 10px;font-size:.85rem}.invoice-row{border:1px solid #555b68;border-radius:16px;padding:14px;margin:16px 0}.invoice-row h3{margin:0 0 12px}.invoice-total{margin:20px 0;font-size:1.05rem}
+
+.archive-actions{display:flex;gap:8px;flex-wrap:wrap}.archive-actions .danger{background:#4a1518;border-color:#d56b72}.archive-actions button{white-space:nowrap}
