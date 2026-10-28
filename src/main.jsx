@@ -35,7 +35,7 @@ function App(){
   const doc = new jsPDF();
   const lines = ['GO RESTAURANT – ABRECHNUNG','Art: '+(kind==='rotary'?'Montags Rotary':'Abendkasse'),'Datum: '+answers.date,'Abschlussnummer laut Z-Abschlag: '+(answers.abschlussnummer||'—'),'Mitarbeiter/in: '+(answers.employee||'—')]; if(kind==='rotary') { lines.push('','VERKAUFTE SPEISEN UND GETRÄNKE'); rotaryLineItems.forEach(item=>lines.push(item.name+' | Menge: '+item.quantity+' | Einzelpreis: '+euro(item.unitPrice)+' | Gesamt: '+euro(item.total))); lines.push('Artikelumsatz gesamt: '+euro(rotaryItemsTotal)); } else lines.push('','Tagesumsatz laut Kasse: '+euro(amount('sales')),'Übriges Bargeld: '+euro(amount('cashLeft')),'EC-/Kartenzahlungen: '+euro(amount('card')),'Offene Firmenrechnungen:');
   invoiceRows.filter(row=>row.company.trim()||row.amount.trim()).forEach(row=>lines.push('- '+row.company+': '+euro(Number(String(row.amount||0).replace(/\s/g,'').replace(/\./g,'').replace(',','.'))||0)));
-  if(kind!=='rotary'){lines.push('Offene Firmenrechnungen (nur dokumentiert, nicht verrechnet): '+euro(invoiceTotal),'Eingelöste Gutscheine: '+euro(amount('vouchers')));} payoutRows.filter(row=>row.name.trim()||row.amount.trim()).forEach(row=>lines.push('Auszahlung – '+(row.name.trim()||'Name nicht angegeben')+': '+euro(Number(String(row.amount||0).replace(/\s/g,'').replace(/\./g,'').replace(',','.'))||0))); lines.push('Summe aller Auszahlungen: '+euro(payoutTotal)); lines.push('Quittungen: '+euro(amount('receipts')),'','Trinkgeld / Differenz: '+euro(result),'Auszahlbares Trinkgeld: '+euro(Math.max(0,result)));
+  if(kind!=='rotary'){lines.push('Offene Firmenrechnungen (nur dokumentiert, nicht verrechnet): '+euro(invoiceTotal),'Eingelöste Gutscheine: '+euro(amount('vouchers')));} payoutRows.filter(row=>row.name.trim()||row.amount.trim()).forEach(row=>lines.push('Auszahlung – '+(row.name.trim()||'Name nicht angegeben')+': '+euro(Number(String(row.amount||0).replace(/\s/g,'').replace(/\./g,'').replace(',','.'))||0))); lines.push('Summe aller Auszahlungen: '+euro(payoutTotal)); lines.push('Quittungen: '+euro(amount('receipts')),'','Trinkgeld / Differenz: '+euro(result));
   let y=18; lines.forEach(line=>{const wrapped=doc.splitTextToSize(line,180);if(y+wrapped.length*7>280){doc.addPage();y=18;}doc.text(wrapped,15,y);y+=wrapped.length*7;});
   return doc.output('datauristring').split(',')[1];
  };
@@ -98,7 +98,6 @@ function App(){
    '',
    'ERGEBNIS',
    'Trinkgeld / Differenz: '+euro(result),
-   'Auszahlbares Trinkgeld: '+euro(Math.max(0,result)),
    '',
    'Rechenweg: Bargeld + EC/Kartenzahlungen + Auszahlungen (einzeln nach Name) + eingelöste Gutscheine + sonstige Beträge + Quittungen minus Tagesumsatz laut Kasse. Offene Rechnungen werden separat dokumentiert und nicht verrechnet.',
    'Die 120,00 € im Kellnerportemonnaie werden nicht noch einmal abgezogen.'
