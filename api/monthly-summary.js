@@ -71,8 +71,8 @@ export default async function handler(req, res) {
   const secret = process.env.CRON_SECRET;
   const auth = req.headers.authorization || "";
   if (!secret || auth !== "Bearer " + secret) return res.status(401).json({ error: "Unauthorized" });
-  if (!process.env.YAHOO_EMAIL || !process.env.YAHOO_APP_PASSWORD) {
-    return res.status(503).json({ error: "Yahoo SMTP ist noch nicht konfiguriert. YAHOO_EMAIL und YAHOO_APP_PASSWORD fehlen." });
+  if (!process.env.YAHOO_SMTP_USER || !process.env.YAHOO_APP_PASSWORD || !process.env.YAHOO_FROM_EMAIL) {
+    return res.status(503).json({ error: "Yahoo SMTP ist noch nicht konfiguriert. YAHOO_SMTP_USER, YAHOO_APP_PASSWORD und YAHOO_FROM_EMAIL fehlen." });
   }
   try {
     const month = getPreviousMonth();
@@ -89,7 +89,7 @@ export default async function handler(req, res) {
       port: 465,
       secure: true,
       auth: {
-        user: process.env.YAHOO_EMAIL,
+        user: process.env.YAHOO_SMTP_USER,
         pass: process.env.YAHOO_APP_PASSWORD,
       },
       connectionTimeout: 15000,
@@ -97,7 +97,7 @@ export default async function handler(req, res) {
       socketTimeout: 20000,
     });
     const info = await transporter.sendMail({
-      from: process.env.YAHOO_EMAIL,
+      from: { name: "Schützenhaus Gastronomie – Rotary-Dokumentation", address: process.env.YAHOO_FROM_EMAIL },
       to: "info@schuetzenhaus-rs.de",
       subject,
       text: "Guten Tag Ellen Clemes,\n\nanbei erhalten Sie die monatliche PDF-Übersicht der dokumentierten Tischdecken-Pauschalen und Essen auf Rechnung Rotary für " + monthLabel(month) + ". Diese Positionen sind getrennt vom regulären Artikelumsatz und Kassenabschluss ausgewiesen.\n\nViele Grüße",
@@ -107,7 +107,7 @@ export default async function handler(req, res) {
         contentType: "application/pdf",
       }],
     });
-    await put(sentPath, JSON.stringify({ month, sentAt: new Date().toISOString(), messageId: info.messageId || null, recipient: "info@schuetzenhaus-rs.de" }), {
+    await put(sentPath, JSON.stringify({ month, sentAt: new Date().toISOString(), messageId: info.messageId || null, recipient: "info@schuetzenhaus-rs.de", sender: process.env.YAHOO_FROM_EMAIL }), {
       access: "private", addRandomSuffix: false, allowOverwrite: true, contentType: "application/json", cacheControlMaxAge: 0,
     });
     return res.status(200).json({ sent: true, month, records: rotaryRecords.length });
