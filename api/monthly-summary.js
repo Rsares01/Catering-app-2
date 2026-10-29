@@ -1,5 +1,6 @@
 import { get, put } from "@vercel/blob";
 import { jsPDF } from "jspdf";
+import nodemailer from "nodemailer";
 
 const ARCHIVE_PATH = "restaurant-abrechnung/archive.json";
 const euro = value => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(Number(value) || 0);
@@ -70,8 +71,8 @@ export default async function handler(req, res) {
   const secret = process.env.CRON_SECRET;
   const auth = req.headers.authorization || "";
   if (!secret || auth !== "Bearer " + secret) return res.status(401).json({ error: "Unauthorized" });
-  if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM_EMAIL) {
-    return res.status(503).json({ error: "E-Mail-Versand ist noch nicht konfiguriert. RESEND_API_KEY und RESEND_FROM_EMAIL fehlen." });
+  if (!process.env.YAHOO_EMAIL || !process.env.YAHOO_APP_PASSWORD) {
+    return res.status(503).json({ error: "Yahoo SMTP ist noch nicht konfiguriert. YAHOO_EMAIL und YAHOO_APP_PASSWORD fehlen." });
   }
   try {
     const month = getPreviousMonth();
@@ -83,28 +84,35 @@ export default async function handler(req, res) {
     if (!rotaryRecords.length) return res.status(200).json({ sent: false, reason: "no_rotary_records", month });
     const pdf = makePdf(month, rotaryRecords);
     const subject = "Monatsübersicht Rotary – " + monthLabel(month);
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: "Bearer " + process.env.RESEND_API_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: process.env.RESEND_FROM_EMAIL,
-        to: ["info@schuetzenhaus-rs.de"],
-        subject,
-        text: "Guten Tag Ellen Clemes,\n\nanbei erhalten Sie die monatliche PDF-Übersicht der dokumentierten Tischdecken-Pauschalen und Essen auf Rechnung Rotary für " + monthLabel(month) + ". Diese Positionen sind getrennt vom regulären Artikelumsatz und Kassenabschluss ausgewiesen.\n\nViele Grüße",
-        attachments: [{ filename: "Rotary-Monatsuebersicht-" + month + ".pdf", content: pdf.toString("base64") }],
-      }),
+    const transporter = nodemailer.createTransport({
+      host: "smtp.mail.yahoo.com",
+      port: 465,
+      secure: true,
+      auth: {
+        user: process.env.YAHOO_EMAIL,
+        pass: process.env.YAHOO_APP_PASSWORD,
+      },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000,
     });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      console.error("Monthly report email failed", response.status, result);
-      return res.status(502).json({ error: "E-Mail-Versand fehlgeschlagen." });
-    }
-    await put(sentPath, JSON.stringify({ month, sentAt: new Date().toISOString(), emailId: result.id || null, recipient: "info@schuetzenhaus-rs.de" }), {
+    const info = await transporter.sendMail({
+      from: process.env.YAHOO_EMAIL,
+      to: "info@schuetzenhaus-rs.de",
+      subject,
+      text: "Guten Tag Ellen Clemes,\n\nanbei erhalten Sie die monatliche PDF-Übersicht der dokumentierten Tischdecken-Pauschalen und Essen auf Rechnung Rotary für " + monthLabel(month) + ". Diese Positionen sind getrennt vom regulären Artikelumsatz und Kassenabschluss ausgewiesen.\n\nViele Grüße",
+      attachments: [{
+        filename: "Rotary-Monatsuebersicht-" + month + ".pdf",
+        content: pdf,
+        contentType: "application/pdf",
+      }],
+    });
+    await put(sentPath, JSON.stringify({ month, sentAt: new Date().toISOString(), messageId: info.messageId || null, recipient: "info@schuetzenhaus-rs.de" }), {
       access: "private", addRandomSuffix: false, allowOverwrite: true, contentType: "application/json", cacheControlMaxAge: 0,
     });
     return res.status(200).json({ sent: true, month, records: rotaryRecords.length });
   } catch (error) {
-    console.error("Monthly summary failed", error);
-    return res.status(500).json({ error: "Monatsübersicht konnte nicht erstellt oder versendet werden." });
+    console.error("Monthly summary failed", error?.message || error);
+    return res.status(500).json({ error: "Monatsübersicht konnte nicht erstellt oder versendet werden. Bitte SMTP-Konfiguration prüfen." });
   }
 }
