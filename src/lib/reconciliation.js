@@ -10,9 +10,10 @@ export function parseEuro(value) {
 }
 
 export function calculateEveningResult({ cashLeft = 0, card = 0, payouts = 0, vouchers = 0, other = 0, receipts = 0, openInvoices = 0, sales = 0 } = {}) {
-  return parseEuro(cashLeft) + parseEuro(card) + parseEuro(payouts) +
+  const total = parseEuro(cashLeft) + parseEuro(card) + parseEuro(payouts) +
     parseEuro(vouchers) + parseEuro(other) + parseEuro(receipts) +
     parseEuro(openInvoices) - parseEuro(sales);
+  return Math.round((total + Number.EPSILON) * 100) / 100;
 }
 
 export function filterArchiveRecords(records, rotaryOnly = false) {
